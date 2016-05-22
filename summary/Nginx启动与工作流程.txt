@@ -1,0 +1,101 @@
+main(...)-->nginx.c
+	1. ngx_strerror_init()  
+		把sterror方法的所以输出结果存放起来，则以后就可以在数组中以errno为索引直接得到相应的字符串
+	2. ngx_get_options(argc, argv)  
+		获取和解析Nginx启动的命令行参数
+	3. 接下来根据命令行参数进行设置和处理
+	4. ngx_time_init()	
+		更新时间
+	5. ngx_log_init(ngx_prefix)  
+		初始化日志文件
+	6. ngx_save_argv(&init_cycle, argc, argv)  
+		把命令行参数保存到全局变量ngx_argv, ngx_os_agrv, ngx_argc中
+	7. ngx_process_options(&init_cycle)  
+		初始化init_cycle中的conf_prefix, prefix, conf_file, conf_param
+	8. ngx_os_init(log)  
+		初始化系统的相关变量，
+		如内存页面大小ngx_pagesize 
+		缓存行的大小ngx_cacheline_size?
+		最大的套接字数ngx_max_sockets 
+	9. ngx_crc32_table_init()
+		初始化CRC校验?
+	10. ngx_add_inherited_sockets(&init_cycle)
+		检查是否平滑升级Nginx
+	11. ngx_init_cycle(&init_cycle)  
+		初始化ngx_cycle_t数据结构，解析配置文件，加载模块，打开监听端口等(关键方法)。
+	12. ngx_os_status(cycle->log)
+		记录日志？
+	13. 检查Nginx的运行模式为单进程还是master/worker模式
+	14. ngx_init_signals(cycle->log)
+		挂载signals信号数组的信号处理函数 signals数组定义在ngx_process.c
+	15. ngx_create_pidfile(&ccf->pid, cycle->log)
+		创建pid文件？
+	16. if (ngx_process == NGX_PROCESS_SINGLE) {
+			ngx_single_process_cycle(cycle);		// 单进程模式运行
+
+		} else {
+			ngx_master_process_cycle(cycle);      // 以master/worker模式运行Nginx
+		}
+
+ngx_init_cycle(...)-->ngx_cycle.c
+	1. ngx_timezone_update()
+		更新时区
+	2. ngx_time_update()
+		更新时间
+	3. 创建一个新的cycle，把old_cycle原有的值复制到新的cycle中
+		还有初始化一些old_cycle未赋值的变量
+	4. 调用所以核心模块的create_conf方法
+	5. 设置conf(ngx_conf_t类型)变量，实际为cycle结构的变量
+	6. ngx_conf_param(&conf)
+		处理命令行参数
+	7. ngx_conf_parse(&conf, &cycle->conf_file)
+		解析配置文件？ 具体不懂 关键部分
+		因为第4步create_conf已分配了核心模块的配置项结构体
+		这一步把解析的配置赋值给核心模块的配置项结构体
+	8. 调用每个核心模块的init_conf，使用解析出的配置项初始化核心模块功能
+	9. ngx_test_lockfile(cycle->lock_file.data, log)
+		测试lock文件是否可以创建，是否可以关闭描述符，是否可以删除文件
+	10. ngx_create_paths(cycle, ccf->user)
+		创建cycle->pathes里的目录，并设置为user指定的用户
+	11. ngx_conf_open_file(cycle, &eror_log)
+		创建日志文件
+	12. 打开open_files链表的文件
+		Nginx框架并不会向open_files链表添加文件，
+		而是由对此感兴趣的模块向其中添加文件路径名
+	13. 创建共享内存？
+	14. 添加cycle->listening里的端口
+		在解析配置项时，所有的模块都已经解析出自己需要监听的端口，如HTTP模块已经在解析http{．．．}配置项时
+		得到它要监听的端口，并添加到listening数组中了。这一步骤就是按照listening数组中的每一个ngx_listening_t元素
+		设置socket句柄并监听端口（实际上，这一步骤的主要工作就是调用了ngx_open_listening_sockets方法）。
+	15. ngx_open_listening_sockets(cycle) 
+		调用socket->bind->listen
+	16. ngx_configure_listening_sockets(cycle) 
+		不懂?
+	17. ngx_set_stderr()
+		不懂？
+	18. 调用所有模块的init_module方法
+	19. 关闭和释放一些old_cycle的资源
+
+ngx_master_process_cycle(...)-->ngx_process_cycle.c
+	1. 先屏蔽一部分信号
+	2. ngx_start_worker_processes(cycle, workers, type)
+		启动子进程的方法 调用workers次 ngx_spawn_process()
+	3. 进入master进程的循环 sigsuspend()等待信号
+
+ngx_spawn_process(...)->ngx_process.c
+	1. 找到可用进程数组的进程结构体
+	2. 创建管道
+	3. fork() 
+		父进程结束 子进程ngx_worker_process_cycle(cycle, NULL)
+
+ngx_worker_process_cycle(...)-->ngx_process_cycle.c
+	1. ngx_worker_process_init(cycle, 1)
+		根据配置文件设置进程的一些限制 
+		调用所有模块的init_process方法 
+		设置管道
+	2. 进入worker进程的循环方法 
+		里面有处理时间的核心方法 ngx_process_events_and timers(cycle)
+	
+
+	
+	

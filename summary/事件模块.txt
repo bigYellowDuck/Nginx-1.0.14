@@ -1,0 +1,16 @@
+﻿ngx_events_block为ngx_events_module(即事件模块，在ngx_modules数组的第四个位置)模块的commands结构体的回调函数
+该模块属于核心模块，故在ngx_init_cycle方法中调用ngx_conf_parse方法时通过解析配置文件遇到"event"会调用ngx_event_block
+
+ngx_events_block(...)
+	1. 计算事件模块的个数并且设置它们的编号
+	2. 分配指针数组，存储所有事件模块生成的配置项结构体指针
+	3. 调用每个事件模块的create_conf方法，然后把创建出来的配置项结构体地址赋值给ctx指向的指针数组
+	4. ngx_conf_parse(cf, NULL)
+		为所有事件模块解析nginx.conf配置文件
+        把解析出来的配置赋值给上面创建的ctx指向的指针数组指向的结构体
+	5. 调用所有事件模块的init_conf方法
+
+第一个事件模块为ngx_event_core_module， 它的init_process方法做了一系列工作，
+	把监听端口上的读事件的处理方法设置为ngx_event_accept
+第二个事件模块为ngx_epoll_module,它的ngx_epoll_process_events在worker循环时会调用epoll_wait
+	ngx_epoll_process_events方法会被ngx_process_events_and_timers方法调用

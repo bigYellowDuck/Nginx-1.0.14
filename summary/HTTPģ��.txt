@@ -1,3 +1,0 @@
-ngx_http_block为ngx_http_module(即HTTP模块，在ngx_modules数组的第七个位置)模块的commands结构体的回调函数，
-该模块属于核心模块，故在ngx_init_cycle方法中调用ngx_conf_parse方法时通过解析配置文件遇到"http"会调用ngx_http_block，
-该函数最主要的作用是创建，解析，合并了ngx_http_conf_ctx_t结构体的成员，设置好了每个阶段的处理函数，即初始化HTTP请求处理框架
